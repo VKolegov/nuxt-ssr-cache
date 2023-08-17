@@ -52,17 +52,30 @@ module.exports = function cacheRenderer(moduleOptions) {
     if (!isCacheFriendly(route, context)) {
       return false;
     }
-    const hostname =
-      (context.req && context.req.hostname) ||
-      (context.req && context.req.host) ||
-      (context.req && context.req.headers && context.req.headers.host) ||
-      (context.req && context.req.headers && context.req.headers.hostname);
-    if (!hostname) {
-      return;
+
+    if (moduleOptions.useHostPrefix) {
+      const hostname =
+        (context.req && context.req.hostname) ||
+        (context.req && context.req.host) ||
+        (context.req && context.req.headers && context.req.headers.host) ||
+        (context.req && context.req.headers && context.req.headers.hostname);
+
+      if (hostname) {
+        route = path.join(hostname, route);
+      }
     }
-    return moduleOptions.useHostPrefix === true && hostname
-      ? path.join(hostname, route)
-      : route;
+
+    // /catalog/accessories/ -> catalog.accessories
+    let pageString = route
+      .split("/")
+      .filter(char => char !== "")
+      .join(".");
+
+    if (moduleOptions.prefix) {
+      return `${moduleOptions.prefix}:page:${pageString}`;
+    }
+
+    return `page:${pageString}`;
   }
 
   function cacheKeyBuilder(key, route, context) {

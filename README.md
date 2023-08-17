@@ -6,11 +6,11 @@ Cache middleware for nuxt's SSR rendering.
 
 ## Setup
 
-```npm install nuxt-ssr-cache```
+```npm install @vkolegov/nuxt-ssr-cache```
 
 or
 
-```yarn add nuxt-ssr-cache```
+```yarn add @vkolegov/nuxt-ssr-cache```
 
 then inside your `nuxt.config.js` add cache config:
 
@@ -25,7 +25,7 @@ module.exports = {
 
   modules: [
     [
-      'nuxt-ssr-cache',
+      '@vkolegov/nuxt-ssr-cache',
       {
         // if you're serving multiple host names (with differing
         // results) from the same server, set this option to true.
@@ -34,6 +34,7 @@ module.exports = {
         // express or whatever else that uses 'X-Forwarded-Host'
         // header field to provide req.hostname (actual host name)
         useHostPrefix: false,
+        prefix: 'custom-prefix',
         pages: [
           // these are prefixes of pages that need to be cached
           // if you want to cache all pages, just include '/'
@@ -82,6 +83,7 @@ module.exports = {
     store: {
       type: 'redis',
       host: 'localhost',
+      port: 6379,
       ttl: 10 * 60,
       configure: [
         // these values are configured
