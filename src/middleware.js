@@ -106,6 +106,8 @@ module.exports = function cacheRenderer(moduleOptions) {
 
     console.log(`${route} is going to be cached`);
 
+    let fullUrl = route;
+
     if (moduleOptions.useHostPrefix) {
       const hostname =
         (context.req && context.req.hostname) ||
@@ -114,38 +116,37 @@ module.exports = function cacheRenderer(moduleOptions) {
         (context.req && context.req.headers && context.req.headers.hostname);
 
       if (hostname) {
-        route = path.join(hostname, route);
+        fullUrl = path.join(hostname, route);
       }
     }
 
-    let cacheString;
+    let cacheKey;
 
     // /catalog/accessories/ -> catalog.accessories
-    const routeString = route
+    const routeString = fullUrl
       .split("/")
       .filter(char => char !== "")
       .join(".");
 
     if (moduleOptions.prefix) {
-      cacheString = `${moduleOptions.prefix}:page:${routeString}`;
+      cacheKey = `${moduleOptions.prefix}:page:${routeString}`;
     } else {
-      cacheString = `page:${routeString}`;
+      cacheKey = `page:${routeString}`;
     }
 
     const page = getPageByPath(route);
 
     if (page && page.cacheKeyPostfix) {
-      console.log('cacheKeyPostfix detected');
       if (typeof page.cacheKeyPostfix === "string") {
-        cacheString = `${cacheString}:${page.cacheKeyPostfix}`;
+        cacheKey = `${cacheKey}:${page.cacheKeyPostfix}`;
       } else {
-        cacheString += ":" + page.cacheKeyPostfix(context);
+        cacheKey += ":" + page.cacheKeyPostfix(context);
       }
     }
 
-    console.log(cacheString);
+    console.log(`${fullUrl} cached using key ${cacheKey}`);
 
-    return cacheString;
+    return cacheKey;
   }
 
   function cacheKeyBuilder(key, route, context) {
