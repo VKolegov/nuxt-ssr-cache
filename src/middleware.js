@@ -104,6 +104,8 @@ module.exports = function cacheRenderer(moduleOptions) {
       return false;
     }
 
+    console.log(`${route} is going to be cached`);
+
     if (moduleOptions.useHostPrefix) {
       const hostname =
         (context.req && context.req.hostname) ||
@@ -133,12 +135,15 @@ module.exports = function cacheRenderer(moduleOptions) {
     const page = getPageByPath(route);
 
     if (page && page.cacheKeyPostfix) {
+      console.log('cacheKeyPostfix detected');
       if (typeof page.cacheKeyPostfix === "string") {
         cacheString = `${cacheString}:${page.cacheKeyPostfix}`;
       } else {
         cacheString += ":" + page.cacheKeyPostfix(context);
       }
     }
+
+    console.log(cacheString);
 
     return cacheString;
   }
@@ -183,7 +188,7 @@ module.exports = function cacheRenderer(moduleOptions) {
         if (cachedResult) {
           if (process.env.NODE_ENV !== "production") {
             const {sizeof} = require("./performance");
-            console.log(sizeof(cachedResult) + "kb");
+            console.log(`${cacheKey}: ` + sizeof(cachedResult) + "kb");
           }
           return deserialize(cachedResult);
         }

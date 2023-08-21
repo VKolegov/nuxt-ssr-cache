@@ -45,7 +45,16 @@ module.exports = {
           /^\/page3\/\d+$/,
 
           // to cache only root route, use a regular expression
-          /^\/$/
+          /^\/$/,
+          
+          // you can specify custom cache keys for one page 
+          // using cacheKeyPostfix callback 
+          {
+              url: '/page',
+              cacheKeyPostfix: (context) => {
+                  return JSON.stringify(context);
+              },
+          }
         ],
 
         key(route, context) {
