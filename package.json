@@ -1,6 +1,6 @@
 {
   "name": "@vkolegov/nuxt-ssr-cache",
-  "version": "1.6.1",
+  "version": "2.0.0",
   "description": "Cache middleware for nuxt's SSR rendering.",
   "main": "lib/middleware.js",
   "scripts": {
@@ -29,13 +29,14 @@
   "dependencies": {
     "bluebird": "^3.5.5",
     "cache-manager": "^2.9.1",
+    "cache-manager-redis": "^0.6.0",
     "redis": "^2.8.0"
   },
   "optionalDependencies": {
-    "cache-manager-memcached-store": "^2.1.0",
-    "cache-manager-redis": "^0.6.0"
+    "cache-manager-memcached-store": "^2.1.0"
   },
   "devDependencies": {
+    "@nuxt/types": "^2.15",
     "@babel/cli": "^7.4.4",
     "@babel/core": "^7.4.4",
     "@babel/preset-env": "^7.4.4",
