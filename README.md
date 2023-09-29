@@ -58,7 +58,7 @@ and add middleware in your project, for example `middleware/ssr-cache.js`
 
 contents:
 ```javascript
-import {makeSsrCacheMiddleware} from '@vkolegov/nuxt-ssr-cache/middleware-builder';
+import {makeSsrCacheMiddleware} from '@vkolegov/nuxt-ssr-cache/middleware';
 
 /**
  *
