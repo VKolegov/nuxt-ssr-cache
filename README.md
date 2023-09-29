@@ -1,6 +1,6 @@
 # nuxt-ssr-cache
 
-[![NPM version](https://img.shields.io/npm/v/nuxt-ssr-cache.svg)](https://www.npmjs.com/package/nuxt-ssr-cache)
+![npm](https://img.shields.io/npm/v/%40vkolegov%2Fnuxt-ssr-cache)
 
 Cache middleware for nuxt's SSR rendering.
 
@@ -35,34 +35,6 @@ module.exports = {
         // header field to provide req.hostname (actual host name)
         useHostPrefix: false,
         prefix: 'custom-prefix',
-        pages: [
-          // these are prefixes of pages that need to be cached
-          // if you want to cache all pages, just include '/'
-          '/page1',
-          '/page2',
-
-          // you can also pass a regular expression to test a path
-          /^\/page3\/\d+$/,
-
-          // to cache only root route, use a regular expression
-          /^\/$/,
-          
-          // you can specify custom cache keys for one page 
-          // using cacheKeyPostfix callback 
-          {
-              url: '/page',
-              cacheKeyPostfix: (context) => {
-                  return JSON.stringify(context);
-              },
-          }
-        ],
-
-        key(route, context) {
-          // custom function to return cache key, when used previous
-          // properties (useHostPrefix, pages) are ignored. return 
-          // falsy value to bypass the cache
-        },
-
         store: {
           type: 'memory',
 
@@ -80,6 +52,44 @@ module.exports = {
 
   // ...
 };
+```
+
+and add middleware in your project, for example `middleware/ssr-cache.js`
+
+contents:
+```javascript
+import {makeSsrCacheMiddleware} from '@vkolegov/nuxt-ssr-cache/middleware-builder';
+
+/**
+ *
+ * @type {PageToCache[]}
+ */
+const pages = [
+    // these are prefixes of pages that need to be cached
+    // if you want to cache all pages, just include '/'
+    '/page1',
+    '/page2',
+
+    // you can also pass a regular expression to test a path
+    /^\/page3\/\d+$/,
+
+    // to cache only root route, use a regular expression
+    /^\/$/,
+
+    // you can specify custom cache key postfixes for pages using cacheKeyPostfix callback
+    // 'url' property is treated like a start of the path, 
+    // so this rule will apply for /page/subpage, /page/subpage/subsubpage, etc
+    {
+      url: '/page',
+      cacheKeyPostfix: ctx => {
+        return `order_${ctx.store.state.user_id}`;
+      }
+    },
+];
+
+
+export default makeSsrCacheMiddleware(pages);
+
 ```
 
 ### `redis` store
