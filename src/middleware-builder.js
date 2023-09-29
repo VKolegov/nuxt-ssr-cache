@@ -1,15 +1,12 @@
 /**
  *
  * @param {PageToCache[]|string[]} pages
+ * @param {boolean} ssr
  * @returns {(function(context: import('@nuxt/types').Context): Promise<void>)|*}
  */
-export function makeSsrCacheMiddleware(pages) {
+export function makeSsrCacheMiddleware(pages, ssr) {
 
-  /**
-   *
-   * @param {string} routePath
-   * @returns {PageToCache|null}
-   */
+
   function getPageByPath(routePath) {
 
     for (const page of pages) {
@@ -43,10 +40,10 @@ export function makeSsrCacheMiddleware(pages) {
 
     console.log(`[cache middleware] route ${route}`);
 
-    if (!process.server) {
+    if (!ssr) {
+      console.log('[cache middleware] not SSR, skipping');
       return;
     }
-
 
     const page = getPageByPath(route);
 

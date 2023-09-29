@@ -88,7 +88,7 @@ const pages = [
 ];
 
 
-export default makeSsrCacheMiddleware(pages);
+export default makeSsrCacheMiddleware(pages, process.server);
 
 ```
 
