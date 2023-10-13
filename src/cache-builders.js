@@ -1,4 +1,5 @@
 const cacheManager = require('cache-manager');
+const {promisify} = require("util");
 
 function memoryCache(config) {
   return cacheManager.caching({
@@ -62,7 +63,36 @@ function makeCache(config = {type: 'memory'}) {
     throw new Error('Unknown store type: ' + config.type)
   }
 
-  return Promise.promisifyAll(builder(config));
+  const cacheStore = builder(config);
+
+  /**
+   * TODO: update jsdoc
+   * @type {(key: string) => Promise<any>}
+   */
+  const getAsync = promisify(cacheStore.get).bind(cacheStore);
+  /**
+   * TODO: update jsdoc
+   * @type {(key: string, value: string, options: {ttl: number}|null) => Promise<any>}
+   */
+  const setAsync = promisify(cacheStore.set).bind(cacheStore);
+  /**
+   * TODO: update jsdoc
+   * @type {(key: string) => Promise<void>}
+   */
+  const delAsync = promisify(cacheStore.del).bind(cacheStore);
+  /**
+   * TODO: update jsdoc
+   * @type {() => Promise<void>}
+   */
+  const resetAsync = promisify(cacheStore.reset).bind(cacheStore);
+
+  return {
+    ...cacheStore,
+    getAsync,
+    setAsync,
+    delAsync,
+    resetAsync,
+  };
 }
 
 module.exports = makeCache;
