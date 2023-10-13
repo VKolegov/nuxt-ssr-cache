@@ -5,10 +5,7 @@
  * @returns {(function(context: import('@nuxt/types').Context): Promise<void>)|*}
  */
 export function makeSsrCacheMiddleware(pages, ssr) {
-
-
   function getPageByPath(routePath) {
-
     for (const page of pages) {
       const url =
         typeof page === 'string' || page instanceof RegExp ? page : page.url;
@@ -16,12 +13,14 @@ export function makeSsrCacheMiddleware(pages, ssr) {
       const regexpMatch = url instanceof RegExp && url.test(routePath);
 
       if (regexpMatch) {
+        console.log(`${routePath} matched by ${url.toString()}`);
         return page;
       }
 
       const stringMatch = typeof url === 'string' && routePath.startsWith(url);
 
       if (stringMatch) {
+        console.log(`${routePath} matched by ${url.toString()}`);
         return page;
       }
     }
@@ -29,19 +28,43 @@ export function makeSsrCacheMiddleware(pages, ssr) {
     return null;
   }
 
+  async function getPageFromCache($ssrCache, keyPostfix = null) {
+    const key = keyPostfix ? `${$ssrCache.key}_${keyPostfix}` : $ssrCache.key;
 
-  return async context => {
+    // console.log(`[cache middleware] checking cache key: ${key}`);
 
-    if (context.ssrContext?.skipCacheCheck) {
-      return;
+    try {
+      const serializedRenderResult = await $ssrCache.actions.getAsync(key);
+
+      if (serializedRenderResult) {
+        // console.log('[cache middleware] cache found, deserializing');
+        // const renderResult = deserialize(serializedRenderResult);
+        const renderResult = serializedRenderResult;
+
+        if (renderResult.html) {
+          // console.log(
+          //   '[cache middleware] cache found, deserialized, sending response...'
+          // );
+
+          return renderResult;
+        }
+        console.warn('[cache middleware] html not found in deserialized cache');
+      }
+      // else {
+      //   console.log(`[cache middleware] cache not found for key ${key}`);
+      // }
+    } catch (e) {
+      console.error(`[cache middleware] error while reading cache for`, e);
     }
 
+    return null;
+  }
+
+  return async (context) => {
     const route = context.route.fullPath;
 
-    console.log(`[cache middleware] route ${route}`);
-
     if (!ssr) {
-      console.log('[cache middleware] not SSR, skipping');
+      // console.log('[cache middleware] not SSR, skipping');
       return;
     }
 
@@ -51,7 +74,7 @@ export function makeSsrCacheMiddleware(pages, ssr) {
       return;
     }
 
-    console.log(`[cache middleware] ${route} is going to be cached`);
+    // console.log(`[cache middleware] ${route} is under cache mechanism`);
 
     let cacheKeyPostfix = null;
 
@@ -61,10 +84,23 @@ export function makeSsrCacheMiddleware(pages, ssr) {
       cacheKeyPostfix = page.cacheKeyPostfix(context);
     }
 
-    const message = new Error('Process page cache');
+    const cachedContent = await getPageFromCache(
+      context.ssrContext.$ssrCache,
+      cacheKeyPostfix
+    );
+
+    if (!cachedContent) {
+      // console.log(`[cache middleware] ${route} is going to be cached`);
+      context.ssrContext.$ssrCache.shouldCache = true;
+      context.ssrContext.$ssrCache.ttl = page.ttl;
+      context.ssrContext.$ssrCache.postfix = cacheKeyPostfix;
+      return;
+    }
+
+    const message = new Error('Cache detected');
 
     message.code = 999;
-    message.cacheKeyPostfix = cacheKeyPostfix;
+    message.cachedContent = cachedContent;
 
     throw message;
   };

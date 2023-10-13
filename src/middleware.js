@@ -1,5 +1,5 @@
 const path = require('path');
-const {serialize, deserialize} = require('./serializer');
+const {serialize} = require('./serializer');
 const makeCache = require('./cache-builders');
 
 /**
@@ -14,10 +14,10 @@ const makeCache = require('./cache-builders');
  * @property {number} store.ttl
  */
 
-
 /**
  * @typedef {object} PageToCache
  * @property {string|RegExp} url
+ * @property {number|null} ttl seconds
  * @property {string | ((ctx: import('@nuxt/types').Context) => string) | null} cacheKeyPostfix
  */
 
@@ -25,26 +25,38 @@ function cleanIfNewVersion(cache, version) {
   if (!version) {
     return null;
   }
-  return cache.getAsync('appVersion').then((oldVersion) => {
-    if (oldVersion === version) {
-      return null;
-    }
+  return cache
+    .getAsync('appVersion')
+    .then((oldVersion) => {
+      if (oldVersion === version) {
+        return null;
+      }
 
-    console.log(`Cache updated from ${oldVersion} to ${version}`);
-    return cache.resetAsync();
-    // unfortunately multi cache doesn't return a promise
-    // and we can't await for it so as to store new version
-    // immediately after reset.
-  });
+      console.log(`Cache updated from ${oldVersion} to ${version}`);
+      return cache.resetAsync().catch((e) => {
+        console.error('[cache] error while resetting cache', e);
+      });
+      // unfortunately multi cache doesn't return a promise
+      // and we can't await for it so as to store new version
+      // immediately after reset.
+    })
+    .catch((e) => {
+      console.error(`[cache] error while reading cache version`, e);
+    });
 }
 
 function tryStoreVersion(cache, version) {
   if (!version || cache.versionSaved) {
     return null;
   }
-  return cache.setAsync('appVersion', version, {ttl: null}).then(() => {
-    cache.versionSaved = true;
-  });
+  return cache
+    .setAsync('appVersion', version, {ttl: null})
+    .then(() => {
+      cache.versionSaved = true;
+    })
+    .catch((e) => {
+      console.error('[cache] error while saving app version', e);
+    });
 }
 
 /**
@@ -55,6 +67,10 @@ module.exports = function cacheRenderer(moduleOptions) {
   const {nuxt, options} = this;
 
   if (!moduleOptions || !nuxt.renderer) {
+    console.log('[cache] module options or nuxt renderer not found...', {
+      moduleOptions,
+      renderer: !!nuxt.renderer,
+    });
     return null;
   }
 
@@ -65,7 +81,6 @@ module.exports = function cacheRenderer(moduleOptions) {
    * @returns {string}
    */
   function buildCacheKey(route, context) {
-
     let fullUrl = route;
 
     // Добавить к ключу префикс в виде имени хоста (напр. ourgold.local)
@@ -100,9 +115,9 @@ module.exports = function cacheRenderer(moduleOptions) {
   }
 
   const currentVersion = options.version || moduleOptions.version;
+  console.info('[cache] creating cache handler using config: ', moduleOptions.store);
   const cache = makeCache(moduleOptions.store);
   cleanIfNewVersion(cache, currentVersion);
-
 
   // заменяем функцию рендера на нашу, с использованием кэша
   /**
@@ -119,78 +134,67 @@ module.exports = function cacheRenderer(moduleOptions) {
    * @returns {Promise<any>}
    */
   renderer.renderRoute = async (route, context) => {
-
     // hopefully cache reset is finished up to this point.
+
     tryStoreVersion(cache, currentVersion);
 
     if (context.spa) {
-      console.log('[cache] SPA detected');
+      // console.log('[cache] SPA detected');
       return renderRoute(route, context);
     }
 
     // рендерим страницу и пишем её в кэш
 
     try {
-      return await renderRoute(route, context);
+
+      // for middleware
+      context.$ssrCache = {
+        actions: cache,
+        key: buildCacheKey(route, context),
+        shouldCache: false,
+      };
+
+      // console.log(`[cache] waiting for render route ${route}...`);
+      const renderResult = await renderRoute(route, context);
+
+      if (context.$ssrCache.shouldCache) {
+        // console.log(`[cache] render route ${route} finished, caching...`);
+
+        const key = context.$ssrCache.postfix
+          ? `${context.$ssrCache.key}_${context.$ssrCache.postfix}`
+          : context.$ssrCache.key;
+
+        const ttl = context.$ssrCache.ttl || moduleOptions.store.ttl || 10 * 60;
+
+        cache
+          .setAsync(key, serialize(renderResult), {ttl})
+          .then(() => {
+            console.info(`[cache] route ${route} cached using key ${key}, ttl ${ttl}`);
+          })
+          .catch((e) => {
+            console.error(`[cache] error while caching ${route}`, e);
+          });
+      }
+
+      // console.log(`[cache] render route ${route} finished`);
+
+      return renderResult;
     } catch (e) {
       if (e.code !== 999) {
         throw e;
       }
 
-      // process cache
+      // return from cache
 
-      let cacheKey = buildCacheKey(route, context);
-
-      if (!cacheKey) {
-        console.error('[cache] could not build cache key!');
+      if (!e.cachedContent) {
+        throw new Error(`[cache] no cached content found`);
       }
 
-      if (e.cacheKeyPostfix) {
-        cacheKey = `${cacheKey}_${e.cacheKeyPostfix}`;
-      }
-
-      // eslint-disable-next-line no-use-before-define
-      return processCache(cacheKey, route, context);
+      return e.cachedContent;
     }
   };
 
-  console.log('[cache] default renderRoute function overriden');
-
-  async function processCache(key, route, context) {
-
-    console.log(`[cache] checking cache key: ${key}`);
-
-    try {
-      const serializedRenderResult = await cache.getAsync(key);
-
-      if (serializedRenderResult) {
-        console.log('[cache middleware] cache found, deserializing');
-        const renderResult = deserialize(serializedRenderResult);
-
-        if (renderResult.html) {
-          console.log('[cache middleware] cache found, deserialized, sending response...');
-
-          return renderResult;
-        }
-        console.warn('[cache middleware] html not found in deserialized cache');
-      }
-
-    } catch (e) {
-      console.error(e);
-    }
-
-    console.log(`[cache] rendering ${route} from scratch`);
-
-    context.skipCacheCheck = true;
-    const renderResult = await renderRoute(route, context);
-
-    cache.setAsync(key, serialize(renderResult))
-      .then(() => {
-        console.log(`[cache] route ${route} cached using key ${key}`);
-      });
-
-    return renderResult;
-  }
+  console.log('[cache] Nuxt SSR caching is online');
 
   return cache;
 };
