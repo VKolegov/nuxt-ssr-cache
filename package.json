@@ -21,6 +21,13 @@
     "spa"
   ],
   "author": "Arash Shakery <arash.shakery@gmail.com> (arash16.com)",
+  "contributors": [
+    {
+      "name": "Kolegov Vladislav",
+      "email": "dev@vkoelgov.ru",
+      "url": "https://github.com/VKolegov/"
+    }
+  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/VKolegov/nuxt-ssr-cache/issues"
