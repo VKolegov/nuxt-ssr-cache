@@ -1,5 +1,5 @@
 const path = require('path');
-const {serialize} = require('./serializer');
+const {serialize, deserialize} = require('./serializer');
 const makeCache = require('./cache-builders');
 
 /**
@@ -178,7 +178,7 @@ module.exports = function cacheRenderer(moduleOptions) {
 
       // console.log(`[cache] render route ${route} finished`);
 
-      return renderResult;
+      return deserialize(renderResult);
     } catch (e) {
       if (e.code !== 999) {
         throw e;
