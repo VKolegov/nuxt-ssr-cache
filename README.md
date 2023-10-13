@@ -83,7 +83,8 @@ const pages = [
       url: '/page',
       cacheKeyPostfix: ctx => {
         return `order_${ctx.store.state.user_id}`;
-      }
+      },
+      ttl: 60 * 30, // 30 minutes
     },
 ];
 
@@ -103,7 +104,7 @@ module.exports = {
       type: 'redis',
       host: 'localhost',
       port: 6379,
-      ttl: 10 * 60,
+      ttl: 10 * 60, // default ttl
       configure: [
         // these values are configured
         // on redis upon initialization
