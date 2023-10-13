@@ -190,6 +190,13 @@ module.exports = function cacheRenderer(moduleOptions) {
         throw new Error(`[cache] no cached content found`);
       }
 
+      if (process.env.NODE_ENV !== "production") {
+        const {sizeof} = require("./performance");
+
+        const cachedSizeStr = sizeof(e.cachedContent) + "kb";
+        console.log(`[cache] returning ${route} from cache (${cachedSizeStr})`);
+      }
+
       return e.cachedContent;
     }
   };
